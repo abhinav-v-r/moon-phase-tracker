@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Moon Phase Tracker</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Space Grotesk', sans-serif;
+            background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 50%, #16213e 100%);
+            color: #ffffff;
+            min-height: 100vh;
+        }
+        
+        .moon-phase {
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .moon-phase:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 30px rgba(255, 255, 255, 0.2);
+        }
+        
+        .moon-icon {
+            width: 80px;
+            height: 80px;
+            background: radial-gradient(circle at 30% 40%, #e0e0e0 0%, #a0a0a0 100%);
+            border-radius: 50%;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
+        }
+        
+        .moon-shadow {
+            position: absolute;
+            background: #0f0f23;
+            border-radius: 50%;
+            transition: all 0.3s ease;
+        }
+        
+        .shine {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background: rgba(255, 255, 255, 0.8);
+            border-radius: 50%;
+            filter: blur(4px);
+        }
+        
+        .star {
+            position: absolute;
+            width: 2px;
+            height: 2px;
+            background: white;
+            border-radius: 50%;
+            animation: twinkle 3s infinite;
+        }
+        
+        @keyframes twinkle {
+            0%, 100% { opacity: 0.3; }
+            50% { opacity: 1; }
+        }
+        
+        .glow {
+            box-shadow: 0 0 40px rgba(255, 255, 255, 0.1);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4">
+    <div class="max-w-4xl w-full mx-auto">
+        <!-- Header -->
+        <div class="text-center mb-12">
+            <h1 class="text-4xl md:text-6xl font-bold bg-gradient-to-r from-blue-200 via-purple-200 to-pink-200 bg-clip-text text-transparent mb-4">
+                Moon Phase Tracker
+            </h1>
+            <p class="text-gray-300 text-lg">Follow the lunar cycle and plan accordingly</p>
+        </div>
+
+        <!-- Today's Moon Phase -->
+        <div class="bg-gray-900/50 backdrop-blur-sm rounded-3xl p-8 mb-8 glow">
+            <div class="text-center">
+                <h2 class="text-2xl font-semibold mb-6">Today's Moon Phase</h2>
+                <div class="flex flex-col items-center">
+                    <div id="today-moon" class="moon-phase mb-4 relative">
+                        <div class="moon-icon"></div>
+                        <div class="shine" style="top: 20px; right: 20px;"></div>
+                    </div>
+                    <div id="today-info" class="space-y-2">
+                        <div class="text-xl font-medium" id="phase-name"></div>
+                        <div class="text-gray-300" id="today-date"></div>
+                        <div class="text-sm text-gray-400" id="illumination"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Next 7 Days Section -->
+        <div class="bg-gray-900/50 backdrop-blur-sm rounded-3xl p-8">
+            <div class="flex flex-col md:flex-row justify-between items-center mb-6">
+                <h2 class="text-2xl font-semibold mb-4 md:mb-0">Next 7 Days</h2>
+                <button id="toggle-next-days" class="bg-purple-600 hover:bg-purple-700 px-6 py-3 rounded-full font-medium transition-colors">
+                    Show Next 7 Days
+                </button>
+            </div>
+            
+            <div id="next-days-container" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-4 hidden">
+                <!-- Moon phases for next 7 days will be generated here -->
+            </div>
+        </div>
+
+        <!-- Info Section -->
+        <div class="mt-8 text-center text-gray-400 text-sm">
+            <p>Moon phase data calculated based on lunar cycle algorithm</p>
+        </div>
+    </div>
+
+    <script>
+        class MoonPhaseTracker {
+            constructor() {
+                this.currentDate = new Date();
+                this.phaseNames = {
+                    0: 'New Moon',
+                    1: 'Waxing Crescent',
+                    2: 'First Quarter',
+                    3: 'Waxing Gibbous',
+                    4: 'Full Moon',
+                    5: 'Waning Gibbous',
+                    6: 'Last Quarter',
+                    7: 'Waning Crescent'
+                };
+                
+                this.initialize();
+                this.createStars();
+            }
+            
+            initialize() {
+                this.updateTodayPhase();
+                this.setupEventListeners();
+            }
+            
+            setupEventListeners() {
+                const toggleBtn = document.getElementById('toggle-next-days');
+                toggleBtn.addEventListener('click', () => {
+                    const container = document.getElementById('next-days-container');
+                    if (container.classList.contains('hidden')) {
+                        this.showNext7Days();
+                        toggleBtn.textContent = 'Hide Next 7 Days';
+                    } else {
+                        container.classList.add('hidden');
+                        toggleBtn.textContent = 'Show Next 7 Days';
+                    }
+                    container.classList.toggle('hidden');
+                });
+            }
+            
+            getMoonPhase(date) {
+                // Simplified moon phase calculation
+                // Returns phase number (0-7) and illumination percentage
+                const knownNewMoon = new Date('2024-01-01'); // Known new moon date
+                const lunarCycle = 29.530588853; // days
+                
+                const daysSinceNewMoon = (date - knownNewMoon) / (1000 * 60 * 60 * 24);
+                const phase = (daysSinceNewMoon % lunarCycle) / lunarCycle;
+                const phaseNum = Math.floor(phase * 8) % 8;
+                
+                const illumination = Math.abs(phase - 0.5) * 2;
+                const illuminationPercent = Math.round((1 - illumination) * 100);
+                
+                return {
+                    phase: phaseNum,
+                    illumination: phaseNum === 0 || phaseNum === 4 ? 100 : illuminationPercent,
+                    isWaxing: phaseNum < 4
+                };
+            }
+            
+            updateTodayPhase() {
+                const todayInfo = this.getMoonPhase(this.currentDate);
+                const phaseName = this.phaseNames[todayInfo.phase];
+                
+                document.getElementById('phase-name').textContent = phaseName;
+                document.getElementById('today-date').textContent = this.currentDate.toLocaleDateString();
+                document.getElementById('illumination').textContent = `${todayInfo.illumination}% illuminated`;
+                
+                this.updateMoonIcon('today-moon', todayInfo.phase, todayInfo.illumination, todayInfo.isWaxing);
+            }
+            
+            showNext7Days() {
+                const container = document.getElementById('next-days-container');
+                container.innerHTML = '';
+                
+                for (let i = 1; i <= 7; i++) {
+                    const futureDate = new Date();
+                    futureDate.setDate(this.currentDate.getDate() + i);
+                    
+                    const phaseInfo = this.getMoonPhase(futureDate);
+                    const phaseName = this.phaseNames[phaseInfo.phase];
+                    
+                    const dayElement = document.createElement('div');
+                    dayElement.className = 'text-center moon-phase p-4 rounded-2xl bg-gray-800/50 hover:bg-gray-700/50 transition-colors';
+                    dayElement.innerHTML = `
+                        <div class="text-sm text-gray-300 mb-2">${futureDate.toLocaleDateString('en-US', { weekday: 'short' })}</div>
+                        <div class="text-xs text-gray-400 mb-3">${futureDate.getDate()}/${futureDate.getMonth() + 1}</div>
+                        <div class="flex justify-center mb-3">
+                            <div class="moon-icon relative" id="moon-${i}"></div>
+                        </div>
+                        <div class="text-sm font-medium">${phaseName}</div>
+                        <div class="text-xs text-gray-400 mt-1">${phaseInfo.illumination}%</div>
+                    `;
+                    
+                    container.appendChild(dayElement);
+                    
+                    // Update the moon icon after the element is added to DOM
+                    setTimeout(() => {
+                        this.updateMoonIcon(`moon-${i}`, phaseInfo.phase, phaseInfo.illumination, phaseInfo.isWaxing);
+                    }, 0);
+                }
+            }
+            
+            updateMoonIcon(elementId, phase, illumination, isWaxing) {
+                const moonElement = document.getElementById(elementId);
+                if (!moonElement) return;
+                
+                // Clear existing shadows
+                const existingShadows = moonElement.querySelectorAll('.moon-shadow');
+                existingShadows.forEach(shadow => shadow.remove());
+                
+                const size = 80;
+                const shadowSize = size * (illumination / 100);
+                
+                let shadowStyle = '';
+                
+                switch(phase) {
+                    case 0: // New Moon
+                        shadowStyle = `width: ${size}px; height: ${size}px; left: 0; top: 0;`;
+                        break;
+                    case 1: // Waxing Crescent
+                        shadowStyle = `width: ${size}px; height: ${size}px; left: ${size * 0.2}px; top: 0;`;
+                        break;
+                    case 2: // First Quarter
+                        shadowStyle = `width: ${size/2}px; height: ${size}px; left: ${size/2}px; top: 0;`;
+                        break;
+                    case 3: // Waxing Gibbous
+                        shadowStyle = `width: ${size * 0.3}px; height: ${size}px; left: ${size * 0.7}px; top: 0;`;
+                        break;
+                    case 4: // Full Moon
+                        // No shadow for full moon
+                        break;
+                    case 5: // Waning Gibbous
+                        shadowStyle = `width: ${size * 0.3}px; height: ${size}px; left: 0; top: 0;`;
+                        break;
+                    case 6: // Last Quarter
+                        shadowStyle = `width: ${size/2}px; height: ${size}px; left: 0; top: 0;`;
+                        break;
+                    case 7: // Waning Crescent
+                        shadowStyle = `width: ${size}px; height: ${size}px; left: -${size * 0.2}px; top: 0;`;
+                        break;
+                }
+                
+                if (phase !== 4) { // Not full moon
+                    const shadow = document.createElement('div');
+                    shadow.className = 'moon-shadow';
+                    shadow.style.cssText = shadowStyle;
+                    moonElement.appendChild(shadow);
+                }
+                
+                // Add shine effect
+                const existingShine = moonElement.querySelector('.shine');
+                if (!existingShine && phase !== 0) {
+                    const shine = document.createElement('div');
+                    shine.className = 'shine';
+                    shine.style.top = '20px';
+                    shine.style.right = '20px';
+                    moonElement.appendChild(shine);
+                }
+            }
+            
+            createStars() {
+                const body = document.body;
+                for (let i = 0; i < 50; i++) {
+                    const star = document.createElement('div');
+                    star.className = 'star';
+                    star.style.left = Math.random() * 100 + 'vw';
+                    star.style.top = Math.random() * 100 + 'vh';
+                    star.style.animationDelay = Math.random() * 3 + 's';
+                    star.style.opacity = Math.random() * 0.7 + 0.3;
+                    body.appendChild(star);
+                }
+            }
+        }
+        
+        // Initialize the app
+        document.addEventListener('DOMContentLoaded', () => {
+            new MoonPhaseTracker();
+        });
+    </script>
+</body>
+</html>
+
